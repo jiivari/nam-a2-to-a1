@@ -1,8 +1,34 @@
 # nam-a2-to-a1
 
-Convert [Neural Amp Modeler](https://github.com/sdatkinson/neural-amp-modeler) **A2** captures into **A1-standard** `.nam` files, so hardware and software that only understand A1 can use them.
+**Found a great amp capture on TONE3000, but your pedal or plugin won't load it?** This tool fixes that.
 
-It was built for the 1st-generation **Hotone Ampero**. Its editor (V1.5.0) hangs when importing an A2 file, but A1 files converted with this tool import and play fine.
+## In plain words
+
+NAM amp captures (`.nam` files) now come in a new format called **A2**. A2 sounds great, but older gear only understands the previous format, **A1**. A 1st-gen Hotone Ampero, for example, just freezes when you try to import an A2 file.
+
+You can't simply "save as" A1, because the two formats are built differently. So this tool takes the long way round, like a cover band learning a song by ear:
+
+1. The **A2 capture plays** a recording of guitar parts, noise and sweeps through the virtual amp.
+2. A fresh **A1 capture listens and copies** it, practising thousands of times until it sounds the same.
+3. The tool **checks the result** and tells you plainly whether it's **GOOD**, **OK** or **POOR**.
+4. You get a normal A1 `.nam` file that your old gear can load.
+
+```mermaid
+flowchart LR
+    A["🎸 A2 capture<br/>(won't load on<br/>your gear)"] --> B["A2 plays the<br/>test recording"]
+    B --> C["A1 learns to<br/>sound the same<br/>(about 5 min)"]
+    C --> D{"Quality check"}
+    D -->|"GOOD / OK"| E["✅ A1 .nam file<br/>→ import into Ampero,<br/>older plugins and pedals"]
+    D -->|"POOR"| F["❌ Try more training,<br/>or find an A1 version<br/>of the same amp"]
+```
+
+**Want to know first whether it's worth it?** `--predict` tells you in a few seconds whether a capture will probably convert well. Most captures convert fine. Some very complex ones don't, and the tool tells you so rather than handing you a bad file.
+
+**No computer setup?** Use the [Google Colab version](#run-in-the-browser-google-colab), which runs in your web browser.
+
+---
+
+Technically: this tool converts [Neural Amp Modeler](https://github.com/sdatkinson/neural-amp-modeler) **A2** captures into **A1-standard** `.nam` files by distillation. It was built for the 1st-generation **Hotone Ampero**. Its editor (V1.5.0) hangs when importing an A2 file, but A1 files converted with this tool import and play fine.
 
 ## How it works
 
