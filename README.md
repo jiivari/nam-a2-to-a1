@@ -20,6 +20,30 @@ NAM A2 files use a new container format (`SlimmableContainer`, model version 0.7
 
 The tool needs two NAM versions because 0.13 can't load A1 configs and 0.11 can't load A2.
 
+## Check before converting
+
+Each A2 file contains a small *Lite* and a large *Full* version of the same capture. If even Lite sounds close to Full, the capture is simple enough for A1-standard and will most likely convert well. `--predict` measures this in a few seconds per file, without any training:
+
+```bash
+./nam-a2-to-a1 --predict *.nam
+```
+
+| Lite-vs-Full ESR | Prediction |
+|---|---|
+| ≤ 0.06 | LIKELY GOOD/OK. Convert with the default steps |
+| 0.06–0.15 | UNCERTAIN. Try `--steps 1500` first |
+| > 0.15 | LIKELY POOR. Look for an A1 version instead |
+
+The thresholds are based on only a few captures so far:
+
+| Capture | Lite-vs-Full ESR | Conversion result |
+|---|---|---|
+| 5150-style high gain | 0.026 | GOOD |
+| Orange OR30 | 0.030 | OK |
+| Orange Rockerverb | 0.35–0.51 | POOR |
+
+Treat the prediction as an estimate, not a guarantee. When a capture comes in several variants (e.g. L/M/R mic positions), convert the one with the lowest score.
+
 ## How long it takes
 
 Training runs a **fixed number of steps: 6000 by default**. That is enough for most captures. Captures that are hard to convert come out POOR. For those, override the step count with `--steps`, for example `--steps 20000`. Time grows linearly with the step count.
@@ -33,6 +57,7 @@ Training runs a **fixed number of steps: 6000 by default**. That is enough for m
 
 Results so far:
 - A 5150-style high-gain amp+cab capture: ESR 0.018 (GOOD) with the default 6000 steps.
+- An Orange OR30 capture: ESR 0.009 on the training signal and 0.026 on the unseen test signal (OK) with 6000 steps.
 - An Orange Rockerverb full-rig capture, whose own A2-Lite already differed a lot from A2-full: ESR 0.12 after 6000 steps and 0.09 after 20000 steps (POOR). It stopped improving. **Not every A2 capture can be converted accurately.** A1-standard is simply too small for some of them.
 
 If you only want a quick check, `--steps 1500` takes about a quarter of the time and usually shows whether a capture converts well.
@@ -71,6 +96,7 @@ cd nam-a2-to-a1
 | `--outdir DIR` | `.` | Where the converted `… (A1).nam` files go |
 | `--steps N` | 6000 | Training steps. Raise this if the result is POOR |
 | `--template A1.nam` | random init | Warm-start from an existing A1-standard capture |
+| `--predict` | | Don't convert. Only estimate how well each file would convert (see above) |
 
 ### Training signal
 
@@ -93,7 +119,7 @@ To use the skill from any folder, copy or symlink it into `~/.claude/skills/`. T
 To check a file by hand:
 
 ```bash
-python3 .claude/skills/nam-a2-to-a1/scripts/inspect_nam.py "My Amp.nam"
+python3 .claude/skills/nam-a2-to-a1/scripts/inspect_nam.py --predict "My Amp.nam"
 ```
 
 ## Notes

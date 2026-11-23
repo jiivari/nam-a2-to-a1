@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Convert NAM A2 captures to A1-standard .nam files.
 # Usage: ./nam-a2-to-a1 [--input SIGNAL.wav] [--outdir DIR] [--steps N] [--template A1.nam] FILE.nam [FILE2.nam ...]
+#        ./nam-a2-to-a1 --predict FILE.nam [...]   (quick estimate of how well each file will convert)
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,28 +16,37 @@ INPUT=""
 OUTDIR="."
 STEPS=6000
 TEMPLATE=""
+PREDICT=0
 FILES=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --predict) PREDICT=1; shift ;;
     --input) INPUT="$2"; shift 2 ;;
     --outdir) OUTDIR="$2"; shift 2 ;;
     --steps) STEPS="$2"; shift 2 ;;
     --template) TEMPLATE="$2"; shift 2 ;;
-    -h|--help) sed -n 2,3p "$0"; exit 0 ;;
+    -h|--help) sed -n 2,4p "$0"; exit 0 ;;
     *) FILES+=("$1"); shift ;;
   esac
 done
-[[ ${#FILES[@]} -gt 0 ]] || { sed -n 2,3p "$0"; exit 1; }
+[[ ${#FILES[@]} -gt 0 ]] || { sed -n 2,4p "$0"; exit 1; }
+
+if [[ $PREDICT -eq 1 ]]; then
+  pargs=()
+  [[ -n "$INPUT" ]] && pargs=(--input "$INPUT")
+  exec "$NEW_PY" "$HERE/predict.py" "${FILES[@]}" ${pargs[@]+"${pargs[@]}"} \
+    2> >(grep -v -i -E 'warn' >&2)
+fi
 
 # Default training signal: the test signal the Ampero Editor itself writes when it
-# imports a NAM file (macOS location). Pass --input on other systems.
-if [[ -z "$INPUT" ]]; then
-  INPUT="$HOME/Library/Application Support/com.hotone.mp380/wavs/nam_input_wav.wav"
-fi
-if [[ ! -f "$INPUT" ]]; then
+# imports a NAM file (macOS location). Without it, a synthetic signal is used.
+if [[ -n "$INPUT" && ! -f "$INPUT" ]]; then
   echo "Training signal not found: $INPUT" >&2
-  echo "Pass --input SIGNAL.wav (see README)." >&2
   exit 1
+fi
+if [[ -z "$INPUT" ]]; then
+  AMPERO="$HOME/Library/Application Support/com.hotone.mp380/wavs/nam_input_wav.wav"
+  [[ -f "$AMPERO" ]] && INPUT="$AMPERO"
 fi
 
 mkdir -p "$OUTDIR" "$HERE/work"
@@ -47,7 +57,9 @@ for f in "${FILES[@]}"; do
   npz="$HERE/work/$base.npz"
   out="$OUTDIR/$base (A1).nam"
   echo "== $base"
-  if ! "$NEW_PY" "$HERE/render_teacher.py" "$f" "$npz" --input "$INPUT"; then
+  iargs=()
+  [[ -n "$INPUT" ]] && iargs=(--input "$INPUT")
+  if ! "$NEW_PY" "$HERE/render_teacher.py" "$f" "$npz" ${iargs[@]+"${iargs[@]}"}; then
     SUMMARY+=("FAILED  $base (could not read the A2 file)"); FAILED=1; continue
   fi
   extra=()

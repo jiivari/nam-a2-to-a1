@@ -21,6 +21,14 @@ python3 .claude/skills/nam-a2-to-a1/scripts/inspect_nam.py FILE.nam [MORE.nam ..
 - **A2** (`SlimmableContainer`, version 0.7): convert it. One A2 file contains both the Lite and the Full submodel, and the tool uses Full. There is no separate "A2-Lite file" to look for.
 - **0.7 WaveNet without a container** (e.g. a Lite part extracted on its own): can also be converted.
 
+Before converting A2 files, and especially when there are several to choose from (e.g. L/M/R mic variants), run the **prediction** once the environments exist (step 2). It takes seconds per file and spares the user 5+ minutes of training on a capture that won't convert:
+
+```bash
+./nam-a2-to-a1 --predict FILE.nam [MORE.nam ...]
+```
+
+It compares the capture's own A2-Lite with its A2-Full. If even Lite stays close to Full, A1-standard (which is similar in size) can learn the capture. Results so far: a Lite-vs-Full ESR of ≤ 0.06 converted GOOD/OK, ≥ 0.35 converted POOR, and 0.06–0.15 is untested ground, so suggest a `--steps 1500` trial there. The thresholds rest on a few captures, so present the result as an estimate, not a guarantee. Among several variants, convert the one with the lowest score first.
+
 ## 2. Make sure the environments exist
 
 The tool needs two Python environments (`.venv` with NAM 0.13 to read A2, `.venv-a1` with NAM 0.11 to write A1), because neither NAM version can do both. If either is missing, run `./setup.sh`. It downloads about 2 GB (PyTorch twice), so say so before running it.

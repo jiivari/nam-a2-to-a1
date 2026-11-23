@@ -2,9 +2,12 @@
 """Show what kind of NAM capture a .nam file is (A1 or A2) and its key metadata.
 
 Standard library only, so it runs with any Python 3.
-Usage: python3 inspect_nam.py FILE.nam [MORE.nam ...]
+Usage: python3 inspect_nam.py [--predict] FILE.nam [MORE.nam ...]
+  --predict  also estimate how well each A2 file will convert (needs ./setup.sh)
 """
 import json
+import os
+import subprocess
 import sys
 
 
@@ -54,4 +57,18 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print(__doc__)
         sys.exit(1)
-    print("\n".join(describe(p) for p in sys.argv[1:]))
+    args = sys.argv[1:]
+    want_predict = "--predict" in args
+    files = [a for a in args if a != "--predict"]
+    print("\n".join(describe(p) for p in files))
+    if want_predict:
+        # The prediction needs PyTorch + NAM, so it runs in the repo's .venv.
+        repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", ".."))
+        py = os.path.join(repo, ".venv", "bin", "python")
+        if not os.path.exists(py):
+            print("\n--predict needs the repo environments: run ./setup.sh first.")
+            sys.exit(1)
+        print()
+        sys.stdout.flush()
+        sys.exit(subprocess.call([py, os.path.join(repo, "predict.py"), *files],
+                                 stderr=subprocess.DEVNULL))
