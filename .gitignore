@@ -1,0 +1,8 @@
+.venv/
+.venv-a1/
+work/
+*.npz
+*.nam
+*.wav
+__pycache__/
+.DS_Store
