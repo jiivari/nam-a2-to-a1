@@ -79,6 +79,23 @@ cd nam-a2-to-a1
 
 Everyone else: pass `--input` with a varied guitar or DI signal of at least 10 s. NAM's standard training input works well. Without `--input`, a synthetic signal (pink noise and sine sweeps) is used. That works, but the result may be less accurate on real playing. This repository doesn't ship any audio.
 
+## Using with Claude Code
+
+The repo includes a [Claude Code](https://claude.com/claude-code) skill in `.claude/skills/nam-a2-to-a1/`. Start `claude` inside the cloned repo and ask in plain language, for example *"convert this capture to A1: ~/Downloads/My Amp.nam"* or *"my Ampero editor hangs when importing this .nam"*. Claude then:
+- checks whether each file is A1 or A2,
+- sets up the environments if needed,
+- picks the training signal,
+- runs the conversion,
+- interprets the GOOD/OK/POOR verdict and retries with more steps when it makes sense.
+
+To use the skill from any folder, copy or symlink it into `~/.claude/skills/`. The skill expects the repo next to it, so adjust the paths if you move it.
+
+To check a file by hand:
+
+```bash
+python3 .claude/skills/nam-a2-to-a1/scripts/inspect_nam.py "My Amp.nam"
+```
+
 ## Notes
 
 - Some accuracy is lost, because A1-standard is a smaller network than A2-full. If the capture's author also publishes an A1 version, use that instead.
