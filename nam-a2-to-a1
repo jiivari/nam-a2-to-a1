@@ -40,15 +40,34 @@ if [[ ! -f "$INPUT" ]]; then
 fi
 
 mkdir -p "$OUTDIR" "$HERE/work"
+SUMMARY=()
+FAILED=0
 for f in "${FILES[@]}"; do
   base="$(basename "${f%.nam}")"
   npz="$HERE/work/$base.npz"
   out="$OUTDIR/$base (A1).nam"
   echo "== $base"
-  "$NEW_PY" "$HERE/render_teacher.py" "$f" "$npz" --input "$INPUT"
+  if ! "$NEW_PY" "$HERE/render_teacher.py" "$f" "$npz" --input "$INPUT"; then
+    SUMMARY+=("FAILED  $base (could not read the A2 file)"); FAILED=1; continue
+  fi
   extra=()
   [[ -n "$TEMPLATE" ]] && extra=(--template "$TEMPLATE")
+  set +e
   "$OLD_PY" "$HERE/a2_to_a1.py" "$npz" "$out" --steps "$STEPS" ${extra[@]+"${extra[@]}"} \
     2> >(grep -v -i -E 'warn|pkg_resources' >&2)
+  rc=$?
+  set -e
   rm -f "$npz"
+  case $rc in
+    0) SUMMARY+=("OK      $out") ;;
+    2) bad="$OUTDIR/$base (A1) POOR - do not use.nam"
+       mv -f "$out" "$bad"
+       SUMMARY+=("POOR    $bad"); FAILED=1 ;;
+    *) SUMMARY+=("FAILED  $base (training error, exit $rc)"); FAILED=1 ;;
+  esac
 done
+
+echo
+echo "Summary:"
+printf '  %s\n' "${SUMMARY[@]}"
+exit $FAILED

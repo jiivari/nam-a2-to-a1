@@ -47,6 +47,9 @@ from nam.models.wavenet import WaveNet  # noqa: E402
 
 MODEL_VERSION = "0.5.4"
 SAMPLE_RATE = 48000
+# Quality thresholds for the final verdict (error-to-signal ratio, lower is better).
+GOOD_ESR = 0.02
+OK_ESR = 0.05
 
 # NAM A1 "standard" WaveNet architecture.
 _DILATIONS = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512]
@@ -105,10 +108,16 @@ def main():
 
     z = np.load(a.teacher_npz)
     a2_meta = json.loads(str(z["meta_json"]))
-    x_val, y_val = z["x_val"], z["y_val"]
-    n = len(z["gains"])
+    if "n_train" not in z:
+        raise SystemExit("Teacher file is from an older version; re-run render_teacher.py")
+    n = int(z["n_train"])
     tx = [torch.from_numpy(z[f"x{k}"]) for k in range(n)]
     ty = [torch.from_numpy(z[f"y{k}"]) for k in range(n)]
+    vals = {"target": (z["x_target"], z["y_target"]),
+            "holdout": (z["x_holdout"], z["y_holdout"])}
+
+    def evaluate(model, dev):
+        return {k: esr(render(model, xv, dev), yv) for k, (xv, yv) in vals.items()}
 
     if a.template:
         tmpl = json.load(open(a.template))
@@ -124,19 +133,24 @@ def main():
         init = "random"
     rf = student.receptive_field
     student = student.to(device)
-    print(f"device={device} init={init} receptive_field={rf}")
-    print(f"ESR at start = {esr(render(student, x_val, device), y_val):.4f}", flush=True)
+    print(f"device={device} init={init} receptive_field={rf}", flush=True)
+
+    # Sample training windows in proportion to segment length.
+    L = rf - 1 + a.ny
+    lens = np.array([len(t) - L for t in tx], dtype=np.float64)
+    if (lens <= 0).any():
+        raise SystemExit("A training segment is shorter than one training window.")
+    probs = lens / lens.sum()
 
     student.train()
     opt = torch.optim.Adam(student.parameters(), lr=a.lr)
     sched = torch.optim.lr_scheduler.ExponentialLR(opt, 0.1 ** (1.0 / a.steps))
-    L = rf - 1 + a.ny
-    best = (float("inf"), None)
+    best = (float("inf"), None, None)
     t0 = time.time()
     for step in range(1, a.steps + 1):
         xb, yb = [], []
         for _ in range(a.batch):
-            k = np.random.randint(n)
+            k = np.random.choice(n, p=probs)
             i = np.random.randint(0, len(tx[k]) - L)
             xb.append(tx[k][i : i + L])
             yb.append(ty[k][i + rf - 1 : i + L])
@@ -149,20 +163,24 @@ def main():
         opt.step()
         sched.step()
         if step % 500 == 0 or step == a.steps:
-            v = esr(render(student, x_val, device), y_val)
-            if v < best[0]:
-                best = (v, copy.deepcopy(student.state_dict()))
-            print(f"step {step}/{a.steps} loss {loss.item():.4f} val_ESR {v:.4f} "
-                  f"({time.time()-t0:.0f}s)", flush=True)
+            e = evaluate(student, device)
+            score = (e["target"] + e["holdout"]) / 2
+            if score < best[0]:
+                best = (score, copy.deepcopy(student.state_dict()), e)
+            print(f"step {step}/{a.steps}  ESR target {e['target']:.4f}  "
+                  f"holdout {e['holdout']:.4f}  ({time.time()-t0:.0f}s)", flush=True)
 
     student.load_state_dict(best[1])
     student = student.cpu().eval()
+    e = best[2]
 
     meta = {k: a2_meta[k] for k in ("name", "modeled_by", "gear_type", "gear_make",
                                     "gear_model", "tone_type", "loudness", "gain")
             if k in a2_meta}
     meta["name"] = f"{meta.get('name', 'model')} (A2->A1)"
-    meta["training"] = {"distilled_from": "NAM A2", "val_esr": round(best[0], 6)}
+    meta["training"] = {"distilled_from": "NAM A2",
+                        "esr_target": round(e["target"], 6),
+                        "esr_holdout": round(e["holdout"], 6)}
     out = {
         "version": MODEL_VERSION,
         "metadata": meta,
@@ -174,9 +192,20 @@ def main():
     with open(a.out, "w") as f:
         json.dump(out, f)
 
-    re = build_a1(out["config"], out["weights"])
-    v = esr(render(re, x_val, "cpu"), y_val)
-    print(f"DONE val_ESR={best[0]:.4f} (reloaded {v:.4f}) -> {a.out}")
+    worst = max(e.values())
+    if worst <= GOOD_ESR:
+        verdict, code = "GOOD - close match to the A2 original", 0
+    elif worst <= OK_ESR:
+        verdict, code = "OK - small audible differences possible", 0
+    else:
+        verdict, code = ("POOR - conversion failed, do not use this file.\n"
+                         f"  Try again with more steps, e.g. --steps {max(20000, a.steps * 3)}"), 2
+    print()
+    print(f"Result: {verdict}")
+    print(f"  ESR on training signal {e['target']:.4f}, on unseen test signal "
+          f"{e['holdout']:.4f}  (good <= {GOOD_ESR}, ok <= {OK_ESR})")
+    print(f"  -> {a.out}")
+    sys.exit(code)
 
 
 if __name__ == "__main__":
