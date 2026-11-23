@@ -37,7 +37,7 @@ The tool needs two Python environments (`.venv` with NAM 0.13 to read A2, `.venv
 
 The student only learns what the teacher is shown, so the signal matters:
 
-1. **Hotone Ampero user on macOS:** use the editor's own test signal at `~/Library/Application Support/com.hotone.mp380/wavs/nam_input_wav.wav`. The tool picks it up automatically. It is the best choice, because the editor renders imported captures with exactly this signal. The file appears after the editor has imported a NAM file at least once.
+1. **Hotone Ampero user on macOS:** use the editor's test signal at `~/Library/Application Support/com.hotone.mp380/wavs/nam_input_wav.wav`. The tool picks it up automatically. The editor creates the file at its first NAM import, and it was observed to stay unchanged afterwards. If the file is missing, the user can import any A1 `.nam` once to create it (not verified on a fresh install), or simply go on: the tool falls back to the synthetic signal, which also gave OK results. Don't claim that the editor still renders imports with this exact file; that is unconfirmed.
 2. **Others:** NAM's standard `input.wav`, or any varied guitar DI recording of at least 10 s, passed with `--input`.
 3. **Nothing available:** run without `--input`. A synthetic signal (pink noise and sweeps) is used. It works, but say that the result may be less accurate on real playing.
 

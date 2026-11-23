@@ -126,8 +126,11 @@ cd nam-a2-to-a1
 
 ### Training signal
 
-**Ampero users on macOS** don't need to pass anything. When the Ampero Editor imports a NAM file, it writes its own test signal to
-`~/Library/Application Support/com.hotone.mp380/wavs/nam_input_wav.wav`. The tool uses that file by default. The editor then renders the converted capture with the same signal, so the model is trained on exactly what the editor will feed it.
+**Ampero users on macOS** usually don't need to pass anything. When the Ampero Editor imports a NAM file, it creates a test signal at
+`~/Library/Application Support/com.hotone.mp380/wavs/nam_input_wav.wav`, and the tool uses that file by default. On our Mac the editor created the file at the first NAM import and left it unchanged after later imports.
+
+- **If the file doesn't exist yet**, import any A1 `.nam` into the Ampero Editor once. That should create it, although we haven't confirmed this on a fresh install. Or simply run without it: the tool then falls back to a synthetic signal.
+- **Is it better than the synthetic signal?** Probably, slightly, because it's a guitar-oriented test signal. We haven't confirmed whether the editor still uses this exact file when it builds the Ampero's own model. The synthetic fallback also gave OK results in testing.
 
 Everyone else: pass `--input` with a varied guitar or DI signal of at least 10 s. NAM's standard training input works well. Without `--input`, a synthetic signal (pink noise and sine sweeps) is used. That works, but the result may be less accurate on real playing. This repository doesn't ship any audio.
 

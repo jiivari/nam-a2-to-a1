@@ -38,8 +38,8 @@ if [[ $PREDICT -eq 1 ]]; then
     2> >(grep -v -i -E 'warn' >&2)
 fi
 
-# Default training signal: the test signal the Ampero Editor itself writes when it
-# imports a NAM file (macOS location). Without it, a synthetic signal is used.
+# Default training signal: the test signal the Ampero Editor creates at its first
+# NAM import (macOS location). Without it, a synthetic signal is used.
 if [[ -n "$INPUT" && ! -f "$INPUT" ]]; then
   echo "Training signal not found: $INPUT" >&2
   exit 1
