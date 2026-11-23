@@ -14,7 +14,7 @@ You can't simply "save as" A1, because the two formats are built differently. So
 4. You get a normal A1 `.nam` file that your old gear can load.
 
 ```mermaid
-flowchart LR
+flowchart TD
     A["🎸 A2 capture<br/>(won't load on<br/>your gear)"] --> B["A2 plays the<br/>test recording"]
     B --> C["A1 learns to<br/>sound the same<br/>(about 5 min)"]
     C --> D{"Quality check"}
